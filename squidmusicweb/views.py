@@ -258,7 +258,7 @@ def library_serialize(request) :
                 a = {"id" : album.id, "name" : album.album_name }
                 s_albums.append(a)
             for song in songs :
-                s = {"filename" : URL_ROOT_PATH+reverse('song', kwargs={"squidmusicweb.views.songid": song.id})+"?download",
+                s = {"filename" : URL_ROOT_PATH+reverse('squidmusicweb.views.song', kwargs={"songid": song.id})+"?download",
                      "name" : song.song_name,
                      "grouping" : song.song_grouping,
                      "composer" : song.song_composer,
