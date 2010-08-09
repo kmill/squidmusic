@@ -56,7 +56,7 @@ def song(request, songid) :
             o = urlparse(song.song_filename)
             #        if o.scheme != "file" :
             #            raise Exception("Not on this server")
-            sent_filename = unquote(o.path.split("/")[-1])
+            sent_filename = unquote(o.path.split(os.sep)[-1])
             f = urlopen(song.song_filename)
             response = HttpResponse(f.read(), mimetype=song.song_filetype)
             response['Content-Disposition'] = 'attachment; filename='+sent_filename.encode("utf-8")
