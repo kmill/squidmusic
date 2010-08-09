@@ -3,7 +3,10 @@
 import os
 ROOT_PATH = os.path.dirname(__file__)
 
-SERVER_HOSTNAME = "kmill.mit.edu"
+### For you to configure:
+# This should be set to your server's hostname
+SERVER_HOSTNAME = "server.hostname.tld"
+###
 
 # this is the root path of the server, less a trailing slash
 # the port 2200 is always used
