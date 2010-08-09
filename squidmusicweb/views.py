@@ -16,6 +16,7 @@ from datetime import datetime
 import time
 from django.core.urlresolvers import reverse
 from settings import URL_ROOT_PATH
+import os
 
 def index(request) :
     search = request.GET.get("search", "")
