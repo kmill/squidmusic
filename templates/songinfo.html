@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load time_conversion %}
+
+{% block title %}Music list{% endblock %}
+{% block content %}
+
+<h1>Song Info</h1>
+<strong>Name:</strong> {{song.song_name}} <br />
+<strong>Grouping:</strong> {{song.song_grouping}} <br />
+<strong>Artist:</strong> {{song.song_artist}} <br />
+{% if song.song_tracknum != None %}<strong>Track:</strong> {{song.song_tracknum}} {% if song.song_numbertracks != None %}of {{song.song_numbertracks}}{% endif %} <br />{% endif %}
+<strong>Album:</strong> {{song.song_album}} <br />
+<strong>Genre:</strong> {{song.song_genre}} <br />
+<strong>Time:</strong> {{song.song_time|msec_to_string}} <br />
+
+<a href="?download">Download</a>
+{% endblock %}

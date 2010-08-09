@@ -1,0 +1,78 @@
+* SquidMusic
+
+This is a system for 1) distributed music access, and 2) remote
+speaker control.  The first is handled by SquidMusicWeb, and the
+second by SquidSpeaker.
+
+
+* Requirements
+
+The following software is required for SquidMusic to function.
+- SquidMusicWeb :
+  1) django (tested with 1.2.1)
+  2) sqlite3 (tested with 3.4.0)
+- SquidSpeaker :
+  2) an mplayer which supports pausing_keep_force (tested with 1.0rc2-4.0.1)
+
+
+* Installation
+
+Put the SquidMusic directory somewhere.
+
+** Configuring SquidMusicWeb
+
+Edit the SERVER_HOSTNAME variable in the settings.py file to reflect
+your server's hostname.
+
+** Configuring SquidSpeaker
+
+Edit the password squidspeaker/settings.py to something else so other
+people don't have indiscriminate access of your speakers.
+
+
+* Running
+
+Run ./runsquidmusicweb and ./runsquidspeaker to get the corresponding
+part of SquidMusic running.
+
+
+* Accessing SquidMusicWeb
+
+Use a browser to go to http://{{SERVER_HOSTNAME}}:2200/ where
+{{SERVER_HOSTNAME}} is replaced by your server's hostname.
+
+
+* Setting up SquidMusicWeb
+
+Initially, there will be no music, the admin account will have a
+default password, and there will be one SquidSpeaker entry for
+localhost.  To enter the admin panel, click "Admin" next to the search
+box.  The admin account is "admin" with password "admin" (which you
+should change in the "Auth/Users" panel).
+
+** Adding SquidSpeakers
+
+Go to the "Squidmusicweb/Squid speakers" panel and click "add".  The
+port for squidspeakers is always 21212.
+
+** Adding Music
+
+Go to the "Squidmusicweb/Music libraries" panel and click "add".  Add
+a name for the library and select the type:
+
+1) local iTunes music library.  The library location is the complete
+path to your "iTunes Music Library.xml" file, which, in Mac OS X, is
+in ~/Music/iTunes/
+
+2) local directory.  The library location is the complete path to the
+root of your music collection
+
+3) squidmusic server.  The library location is the url to the root of
+another squidmusicweb installation, with no trailing slash, such as
+"http://squidz-r-us.org:2200".  The port number is required in the
+URL.
+
+After saving, click the check box next to the library, and use the
+drop down menu to synchronize the library to populate the database.
+The web site may seem unresponsive, but that's because it takes a
+while to go through all of that music!

@@ -1,0 +1,21 @@
+{% load time_conversion %}
+<td class="songhandle"><span class="songhandleicon" style="visibility:hidden;">&#x2195;</span></td>
+<td>
+      <nobr><a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=delete&puid={{song.puid}}">&#x2716;</a><!-- webdings r -->
+      <a href="{{song.infolink}}">(Info)</a></nobr>
+  </td><td>
+      <form class="queueform {% if song.isqueued %}hidequeuedbox{% endif %}" method="get" action="{% url squidmusicweb.views.playlist speaker.id %}">
+      <input type="hidden" name="command" value="queue" />
+      <input type="hidden" name="puid" value="{{song.puid}}" />
+      <input type="textbox" size="1" name="number" />
+      </form>
+      {% if song.isqueued %}<span class="queued">{{song.queued}}</span>{% else %}
+      <span class="queued hidequeuedbox"></span>
+      {% endif %}
+    </td>
+    <td><a class="playlistsongname updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=set&puid={{song.puid}}">&#9658; {{song.name}}</a></td>
+    <td>{% if song.grouping != None %}{{song.grouping}}{% endif %}</td>
+    <td>{{song.time|msec_to_string}}</td>
+    <td>{% if song.composer != None %}{{song.composer}}{% endif %}</td>
+    <td>{% if song.artist != None %}{{song.artist}}{% endif %}</td>
+    <td>{{song.album}}</td>

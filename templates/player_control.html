@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+{% load time_conversion %}
+
+{% block title %}Playlist for SquidSpeakers {{speaker.speaker_server}}:{{speaker.speaker_port}}{% endblock %}
+
+{% block otherhead %}
+<script type="text/javascript">
+var update = function() {
+  if(!playernoupdate) { // we're checking this twice, but shouldn't hurt
+    $.getJSON("{% url squidmusicweb.views.playlist speaker.id %}", doUpdate);
+  }
+}
+
+var formatTime = function(seconds) { // seconds are float, but will be truncated to int
+   seconds = parseInt(seconds);
+   var hours = parseInt(seconds / 3600);
+   seconds -= hours * 3600;
+   var minutes = parseInt(seconds / 60);
+   seconds -= minutes * 60;
+   var out = "";
+   if(hours > 0) {
+      out += hours + ":";
+      if(minutes >= 10) {
+         out += minutes + ":";
+      } else {
+         out += "0" + minutes + ":";
+      }
+   } else {
+      out += minutes + ":";
+   }
+   if(seconds >= 10) {
+      out += seconds;
+   } else {
+      out += "0" + seconds;
+   }
+   return out;
+}
+
+var updateNowPlaying = function(playlist) {
+    if(!playlist["isPlaying"]) {
+       $(".nowplaying").html("<em>Not playing</em>");
+    } else {
+       var playing = playlist["playing"];
+       var str = "<strong>"+playing["name"]+"</strong> <a href=\""+playing["infolink"]+"\">(Info)</a><br />"
+       if(playing["grouping"] != null) {
+          str = str + " <em>from</em> " + playing["grouping"] +", ";
+       }
+       if(playing["composer"] != null) {
+          str = str + " <em>composer</em> " + playing["composer"] +", ";
+       }
+       str = str + " <em>artist</em> " + playing["artist"] +", ";
+       str = str + " <em>album</em> " + playing["album"];
+       $(".nowplaying").html(str);
+   }
+};
+
+var playernoupdate = false; // set to true when dragging or when inside an update.
+var ultimateUpdatedTime = null; // set to the last song time, to detect pausing
+var penultimateUpdatedTime = true; // set to the second to last song time, to detect pausing
+var tempPaused = false;
+var lasttempPaused = false;
+
+var doUpdate = function(data) {
+    if(playernoupdate) {
+      return true;
+    }
+    playernoupdate = true;
+
+    focused = $(".queueform input[type='textbox'].focused"); // maintain focus despite update (see end of function)
+
+//    $("#songtime").html(parseFloat(data["position"]).toString() != "NaN"?formatTime(data["position"]):"Unknown");
+    penultimateUpdatedTime = ultimateUpdatedTime;
+    if(data != null) {
+       ultimateUpdatedTime = data["position"];
+    } else {
+       // don't know what to do here...
+    }
+    lasttempPaused = tempPaused;
+    tempPaused = false;
+
+    updateNowPlaying(data);
+    $(".serverrunning").html(data["isPlaying"]?"Running":"Stopped");
+    $(".volumelevel").html(data["volume"]?data["volume"]+"%":"Unknown");
+    if(data["isPlaying"]) {
+        $("#songtimeindicator").slider("option", "max", +data["msecsonglength"]);
+    	$("#songtimeindicator").slider("option", "value", +data["msecsonglocation"]);
+    } else {
+        $("#songtimeindicator").slider("option", "max", 0);
+    	$("#songtimeindicator").slider("option", "value", 0);
+    }
+    
+    if(data["loop"]) {
+       $("a[id='loop']").html("(on)");
+       $("a[id='loop']").attr("href", "{% url squidmusicweb.views.playlist speaker.id %}?command=loop&value=False");
+    } else {
+       $("a[id='loop']").html("(off)");
+       $("a[id='loop']").attr("href", "{% url squidmusicweb.views.playlist speaker.id %}?command=loop&value=True");
+    }
+    if(data["shuffle"]) {
+       $("a[id='shuffle']").html("(on)");
+       $("a[id='shuffle']").attr("href", "{% url squidmusicweb.views.playlist speaker.id %}?command=shuffle&value=False");
+    } else {
+       $("a[id='shuffle']").html("(off)");
+       $("a[id='shuffle']").attr("href", "{% url squidmusicweb.views.playlist speaker.id %}?command=shuffle&value=True");
+    }
+    $(".song").attr("updated", "f");
+//    var firstRow = $("tr.playlistheading:first");
+    var lastid = null;
+    $.each(data["playlist"],
+      function(index, song) {
+        var hasit = false;
+	var row;
+        $(".song[id='"+song["puid"]+"']").each(function(i) {
+            hasit = true;
+            $(this).attr("updated", "t");
+            if(lastid == null) {
+              $(this).insertAfter(".playlistheading");
+            } else {
+              $(this).insertAfter(".song[id='"+lastid+"']");
+            }
+            lastid = song["puid"];
+            
+            row = $(".song[id='"+song["puid"]+"']");
+            if(song["isqueued"].toString() == "true") {
+	      row.find(".queueform").toggleClass("hidequeuedbox", true);
+              row.find(".queued").toggleClass("hidequeuedbox", false);
+	      row.find(".queued").html(song["queued"]);
+            } else {
+              row.find(".queueform").toggleClass("hidequeuedbox", false);
+              row.find(".queued").toggleClass("hidequeuedbox", true);
+            }
+        });
+        if(!hasit) {
+           var code = '<tr id="'+song["puid"]+'" class="song"><td><i>Retrieving info...</i></td></tr>';
+           if(lastid == null) {
+              $(".playlistheading").after(code);
+           } else {
+              $(".song[id='"+lastid+"']").after(code);
+           }
+	   lastid = song["puid"];
+           row = $(".song[id='"+song["puid"]+"']");
+	   song["speakerid"] = data["speakerid"]
+           $.ajax({type : "POST",
+                   url : "{% url squidmusicweb.views.player_song_row %}",
+		   data : song,
+		   async : false,
+	           success : function(data) {
+		     row.html(data);
+                   }});
+        }
+
+	if(data["playing"] && data["playing"]["puid"] == song["puid"]) {
+          row.toggleClass("playing", true);
+        } else {
+          row.toggleClass("playing", false);
+        }
+
+      });
+    $(".song[updated='f']").remove();
+
+    focused.focus(); // finish maintaining focus
+    playernoupdate = false;
+ }
+
+var doCommand = function(command, args) {
+   if(!args) args = new Array();
+   copy = args.slice(0);
+   copy["command"] = command;
+   $.ajax({url : "{% url squidmusicweb.views.playlist speaker.id %}",
+   	   data : copy,
+	   success : update});
+   return false;
+};
+
+var autoUpdateInterval = 500; // every 0.5 seconds
+
+var updateSlider = function() {
+   if(playernoupdate || ultimateUpdatedTime == penultimateUpdatedTime || tempPaused || lasttempPaused) {
+      return;
+   }
+   $("#songtimeindicator").slider("option", "value",
+   			          $('#songtimeindicator').slider("value")+autoUpdateInterval);
+};
+
+window.setInterval(update, 5000); // every 5 seconds
+window.setInterval(updateSlider, autoUpdateInterval);
+
+$(document).ready(function() {
+  $(".queueform input[type='textbox']").each(function() {
+     $(this).blur(function(ev) {
+        $(this).toggleClass("focused", false);
+     });
+     $(this).focus(function(ev) {
+        $(this).toggleClass("focused", true);
+     });
+  });
+  $(".queueform").each(function() {
+    $(this).submit(function(ev) {
+      ev.preventDefault();
+      $.ajax({url : $(this).attr("action"),
+              data : {command : "queue",
+	              puid : $(this).find("input[name='puid']").attr("value"),
+	              number : $(this).find("input[name='number']").attr("value")},
+              success : update});
+      $(this).find("input[name='number']").attr("value", "");
+      $(this).find("input[name='number']").toggleClass("focused", false);
+    });
+  });
+});
+
+$(document).ready(function() {
+  $(".updatenofollow").each(function(){
+    $(this).click(function(ev) {
+      ev.preventDefault();
+      if($(this).attr("href") != "")
+        jQuery.get($(this).attr("href"), update);
+     });
+  })});
+
+ $(document).ready(function() {
+  $("table.speakerplaylist").tableDnD({
+    dragHandle: "songhandle",
+    onDrop: function(table, row) {
+       var rows = table.tBodies[0].rows;
+       var index = 0;
+       for(var i = 1; i < rows.length; i++) {
+          if(row.id == rows[i].id) {
+             index = i-1;
+             break;
+          }
+       }
+       $.ajax({url : "{% url squidmusicweb.views.playlist speaker.id %}",
+               data : {command : "movesong", puid : row.id, index : index},
+	       async : false,
+	       complete : function(r, ts) {
+                  playernoupdate = false;
+               }
+       });
+    },
+    onDragStart: function(table, row) {
+       playernoupdate = true;
+    }
+  });
+  $("table.speakerplaylist tr").hover(function() {
+    $(this.cells[0]).find(".songhandleicon").css("visibility", "visible");
+  }, function() {
+    $(this.cells[0]).find(".songhandleicon").css("visibility", "hidden");
+  });
+
+  $('#songtimeindicator').slider({value: {% if isPlaying %}{{ msecsonglocation }}{% else %}0{% endif %},
+  			          disabled: false,
+  			          min: 0,
+				  max: {% if isPlaying %}{{ msecsonglength }}{% else %}0{% endif %},
+				  stop: function(event, ui) {
+				    if($('#songtimeindicator').slider("max") != 0) {
+  				      $.ajax({url : "{% url squidmusicweb.views.playlist speaker.id %}",
+				              data : {command : "seek",
+					           time : $('#songtimeindicator').slider("value")/1000.0
+                                                  }});
+  				    }
+				    playernoupdate = false;
+            			  },
+				  slide: function(event, ui) {
+				     $('#songtime').html(formatTime($('#songtimeindicator').slider("value")/1000.0));
+				     $('#songtimeleft').html("<nobr>-"+formatTime(($('#songtimeindicator').slider("option", "max")-$('#songtimeindicator').slider("value"))/1000.0)+"</nobr>");
+      				  },
+				  change: function(event, ui) {
+				     $('#songtime').html(formatTime($('#songtimeindicator').slider("value")/1000.0));
+				     $('#songtimeleft').html("<nobr>-"+formatTime(($('#songtimeindicator').slider("option", "max")-$('#songtimeindicator').slider("value"))/1000.0)+"</nobr>");
+      				  },
+				  start: function(event, ui) {
+				     playernoupdate = true;
+      				  }
+				  //animate: true
+  });
+});
+
+</script>
+
+{% endblock %}
+
+{% block content %}
+
+<h1>SquidSpeakers {{speaker.speaker_server}}:{{speaker.speaker_port}}</h1>
+
+<span class="playercontrol">
+<p>Volume:
+<span class="volumelevel">{% if volume %}{{volume}}%{% else %}Unknown{% endif %}</span>
+<a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=lowerVolume">-</a> |
+<a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=raiseVolume">+</a>
+&nbsp;&nbsp;
+| <a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=prev">Prev</a> |
+<a class="updatenofollow" onClick="javascript:tempPaused=true" href="{% url squidmusicweb.views.playlist speaker.id %}?command=pause">Pause</a> |
+<a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=stop">Stop</a> |
+<a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=play">Play</a> |
+<a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=next">Next</a> |
+<strong>Status:</strong> <span class="serverrunning">
+{% if isPlaying %}Running{% else %}Stopped{% endif %}
+</span>
+</p>
+<div class="infocontrol">
+<div class="nowplaying">
+{% if isPlaying %}
+<strong>{{playing.name}}</strong> <a href="{{playing.infolink}}">(Info)</a><br />
+{% if playing.grouping != None %}<em>from</em> {{playing.grouping}}, {% endif %}
+{% if playing.composer != None %}<em>composer</em> {{playing.composer}}, {% endif %}
+<em>artist</em> {{playing.artist}}, 
+<em>album</em> {{playing.album}}
+{% else %}
+<em>Not playing</em>
+{% endif %}
+</div>
+<table width="100%">
+<tr>
+<td id="songtime" style="text-align:right;width:3.5em;">{% if isPlaying %}{{formattedPosition}}{% else %}Unknown{% endif %}</td>
+<td><div id="songtimeindicator"></div></td>
+<td id="songtimeleft" style="text-align:left;width:4.5em;">{% if isPlaying %}<nobr>-{{formattedPositionLeft}}</nobr>{% else %}Unknown{% endif %}</td>
+</tr>
+</table>
+</div>
+<p>Loop: {% if loop %}
+<a id="loop" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=loop&value=False">(on)</a>
+{% else %}
+<a id="loop" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=loop&value=True">(off)</a>
+{% endif %} |
+Shuffle: {% if shuffle %}
+<a id="shuffle" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=shuffle&value=False">(on)</a>
+{% else %}
+<a id="shuffle" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=shuffle&value=True">(off)</a>
+{% endif %} |
+<a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=clear">Clear playlist</a></p>
+</span>
+
+<table class="speakerplaylist">
+  <tr class="playlistheading">
+    <th></th>
+    <th></th>
+    <th></th>
+    <th>Name</th>
+    <th>Grouping</th>
+    <th>Time</th>
+    <th>Composer</th>
+    <th>Artist</th>
+    <th>Album</th>
+  </tr>
+  {% for song in playlist %}
+  <tr id={{song.puid}} class="song{% if playing.puid == song.puid %} playing{% endif %}">
+    {% include "player_song_row.html" %}
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}

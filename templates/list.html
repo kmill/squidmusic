@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load time_conversion %}
+
+{% block title %}Music List{% endblock %}
+{% block content %}
+<div class="pagination">
+    <span class="step-links">
+        {% if songs.has_previous %}
+            <a href="?page={{ songs.previous_page_number }}&search={{search}}">(prev)</a>
+        {% else %}
+         (prev)
+        {% endif %}
+       <span class="current">
+            Page {{ songs.number }} of {{ songs.paginator.num_pages }}
+        </span>
+       {% if songs.has_next %}
+            <a href="?page={{ songs.next_page_number }}&search={{search}}">(next)</a>
+          {% else %}
+         (next)
+        {% endif %}
+    </span>
+</div>
+
+<table class="musictable">
+  <tr><td></td>
+  <th>Track</th><th>Name</th><th>Grouping</th><th>Time</th><th>Composer</th><th>Artist</th><th>Album</th><th>Genre</th><th>Library</th></tr>
+{% for song in songs.object_list %}
+  <tr class="{% cycle "oddentry" "evenentry" %}">
+    <td>
+      <a href="{% url squidmusicweb.views.playlist %}?command=add&id={{song.id}}">Add</a>
+    </td>
+    <td><nobr>{% if song.song_tracknum != None %}
+    {{song.song_tracknum}}
+    {% if song.song_numbertracks != None %}
+    of {{song.song_numbertracks}}
+  {% endif %}
+  {% endif %}</nobr></td>
+    <td><a href="{% url squidmusicweb.views.song song.id %}">{{song.song_name}}</a></td>
+    <td>{% if song.song_grouping != None %}{{song.song_grouping}}<font size="-3"><a href="{% url squidmusicweb.views.playlist %}?command=addgroup&albumid={{song.song_album.id}}&group={{song.song_grouping|urlencode}}">(Add group)</a></font>{% endif %}</td>
+    <td>{{song.song_time|msec_to_string}}</td>
+    <td>{% if song.song_composer != None %}{{song.song_composer}}{% endif %}</td>
+    <td>{% if song.song_artist != None %}{{song.song_artist}}{% endif %}</td>
+    <td>{{song.song_album.album_name}} <font size="-3"><a href="{% url squidmusicweb.views.playlist %}?command=addalbum&id={{song.song_album.id}}">(Add album)</a></font></td>
+    <td>{% if song.song_genre != None %}{{song.song_genre}}{% endif %}</td>
+    <td>{{song.song_album.album_library.library_name}}</td>
+  </tr>
+{% endfor %}
+</table>
+
+<div class="pagination">
+    <span class="step-links">
+        {% if songs.has_previous %}
+            <a href="?page={{ songs.previous_page_number }}&search={{search}}">(prev)</a>
+        {% else %}
+         (prev)
+        {% endif %}
+       <span class="current">
+            Page {{ songs.number }} of {{ songs.paginator.num_pages }}
+        </span>
+       {% if songs.has_next %}
+            <a href="?page={{ songs.next_page_number }}&search={{search}}">(next)</a>
+          {% else %}
+         (next)
+        {% endif %}
+    </span>
+</div>
+
+
+{% endblock %}

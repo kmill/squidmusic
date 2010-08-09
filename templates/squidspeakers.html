@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}SquidSpeakers List{% endblock %}
+{% block content %}
+
+<h1>SquidSpeakers</h1>
+{{message}}
+<ul>
+{% for speaker in speakers %}
+<li><a href="{% url squidmusicweb.views.playlist speaker.id %}">{{speaker.speaker_server}}:{{speaker.speaker_port}}</a>
+  {% if speaker.id == playerid %}
+  <strong>(Default)</strong>
+  {% else %}
+  <a href="{% url squidmusicweb.views.players %}?setdefault={{speaker.id}}">(Set Default)</a>
+  {% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% endblock %}

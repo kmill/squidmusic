@@ -1,0 +1,1 @@
+* Modified easymp4 to accept '\xa9wrt' as composer tag (kyle)

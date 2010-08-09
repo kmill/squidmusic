@@ -1,0 +1,23 @@
+<div class="navbar">
+  <span class="linkbar">
+  <a href="{% url squidmusicweb.views.index %}">Browse</a>
+  | <a href="{% url squidmusicweb.views.players %}">Players</a>
+  | <a href="/admin/">Admin</a>
+  | <form style="display: inline;" method="get" action="{% url squidmusicweb.views.index %}">
+  <input type="textbox" name="search" value="{{search}}"/>
+  <input type="submit" value="Search" />
+  </form>
+</span>
+ 
+<span class="controlbar">
+  <strong>Vol:</strong>
+<a class="nofollow" href="{% url squidmusicweb.views.playlist %}?command=lowerVolume">&darr;</a> |
+<a class="nofollow" href="{% url squidmusicweb.views.playlist %}?command=raiseVolume">&uarr;</a> &nbsp;&nbsp; |
+<a class="nofollow" href="{% url squidmusicweb.views.playlist %}?command=prev">Prev</a> |
+<a class="nofollow" href="{% url squidmusicweb.views.playlist %}?command=pause">Pause</a> |
+<a class="nofollow" href="{% url squidmusicweb.views.playlist %}?command=stop">Stop</a> |
+<a class="nofollow" href="{% url squidmusicweb.views.playlist %}?command=play">Play</a> |
+<a class="nofollow" href="{% url squidmusicweb.views.playlist %}?command=next">Next</a> | &nbsp;&nbsp;
+<a href="{% url squidmusicweb.views.playlist %}">Playlist</a>
+</span>
+ </div>
