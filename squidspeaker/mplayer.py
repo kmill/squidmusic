@@ -8,8 +8,7 @@ from urllib import urlretrieve
 import os
 import tempfile
 
-MPLAYER = "mplayer"
-MPLAYER = "/Applications/MPlayer OSX Extended.app/Contents/Resources/Binaries/mpextended.mpBinaries/Contents/mpextended.mpBinaries/Contents/MacOS/mplayer"
+from settings import MPLAYER
 
 class MplayerDriver(player.PlayerInterface) :
     def __init__(self) :
