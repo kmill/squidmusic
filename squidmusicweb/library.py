@@ -217,31 +217,69 @@ def doDirectorySync(lib) :
             modified = datetime.fromtimestamp(os.path.getmtime(filename))
             songs = Song.objects.filter(song_filename=filename)
             if len(songs) == 0 or songs[0].song_modified < modified : # need to add or update, respectively
-                info = mutagen.File(filename, easy=True)
+                info = None
+                try :
+                    info = mutagen.File(filename, easy=True)
+                except :
+                    message += "<p>Bad song file.</p>"
                 if info is not None :
                     #message += "<pre>--"+filename+"\n-"+info.pprint()+"</pre>"
 
-                    name = info.get("title", [None])[0]
+                    name = info.get("title", [file])[0]
                     grouping = info.get("grouping", [None])[0]
                     composer = info.get("composer", [None])[0]
                     artist = info.get("artist", [None])[0]
                     albumname = info.get("album", [None])[0]
-                    genre = info.get("genre", [None])[0]
+                    try :
+                        genre = info.get("genre", [None])[0]
+                    except :
+                        genre = None
                     time = int(info.info.length*1000) # sec -> msec
                     tracknum = info.get("tracknumber", [None])[0]
                     numbertracks = None
                     if tracknum != None and len(tracknum.split("/")) > 1 :
                         tracknum, numbertracks = tracknum.split("/")
+                    if tracknum != None :
+                        try :
+                            tracknum = int(tracknum)
+                        except ValueError :
+                            tracknum = None
+                            numbertracks = None
+                    if numbertracks != None :
+                        try :
+                            numbertracks = int(numbertracks)
+                        except ValueError :
+                            numbertracks = None
                     discnum = info.get("discnumber", [None])[0]
                     numberdiscs = None
                     if discnum != None and len(discnum.split("/")) > 1 :
                         discnum, numberdiscs = discnum.split("/")
+                    if discnum != None :
+                        try :
+                            discnum = int(discnum)
+                        except ValueError :
+                            discnum = None
+                            numberdiscs = None
+                    if numberdiscs != None :
+                        try :
+                            numberdiscs = int(numberdiscs)
+                        except ValueError :
+                            numberdiscs = None
                     filetype = info.mime[0] # just take first one?
                     filesize = os.path.getsize(filename)
                     try :
                         bitrate = int(info.info.bitrate/1000) # bps -> kbps
                     except AttributeError :
                         bitrate = None # flac
+                    
+                    if albumname == None :
+                        head, tail = os.path.split(root)
+                        if tail == "" or len(head) < len(lib.library_location) :
+                            albumname = "*Unknown Album*"
+                        else :
+                            albumname = tail
+                    if artist == None :
+                        artist = "*Unknown Artist*"
 
                     albums = Album.objects.filter(album_library__id = lib.id, album_name = albumname)
                     album = None
