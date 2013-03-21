@@ -27,7 +27,7 @@
 {% for song in songs.object_list %}
   <tr class="{% cycle "oddentry" "evenentry" %}">
     <td>
-      <a href="{% url squidmusicweb.views.playlist %}?command=add&id={{song.id}}">Add</a>
+      <a href="{% url squidmusicweb.views.playlist %}?command=add&id={{song.id}}">&nbsp;<b>+</b>&nbsp;</a>
     </td>
     <td><nobr>{% if song.song_tracknum != None %}
     {{song.song_tracknum}}

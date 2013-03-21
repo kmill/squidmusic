@@ -5,7 +5,7 @@ ROOT_PATH = os.path.dirname(__file__)
 
 ### For you to configure:
 # This should be set to your server's hostname
-SERVER_HOSTNAME = "server.hostname.tld"
+SERVER_HOSTNAME = "cuirass.crl.vecna.com"
 ###
 
 # this is the root path of the server, less a trailing slash

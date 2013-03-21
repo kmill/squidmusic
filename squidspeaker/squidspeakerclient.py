@@ -11,6 +11,7 @@ class SquidSpeakerClient(object) :
 
     def send(self, command, data = None) :
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.connect((self.server, self.port))
         d = pickle.dumps(data).encode('base64')
         self.sock.send(self.password + "\n" + command + "\n" + str(len(d)) + "\n" + d)

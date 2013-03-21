@@ -29,7 +29,7 @@ def index(request) :
                                            | Q(song_composer__icontains=term)
                                            | Q(song_artist__icontains=term)
                                            | Q(song_album__album_name__icontains=term))
-    songs_list = songs_list.order_by('song_album__album_name', 'song_album__album_library__id', 'song_discnum', 'song_tracknum')
+    songs_list = songs_list.order_by('song_album__album_name', 'song_album__album_library__id', 'song_discnum', 'song_grouping', 'song_tracknum')
     paginator = Paginator(songs_list, 100)
 
     try :

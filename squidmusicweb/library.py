@@ -36,6 +36,7 @@ def doLibrarySynchronization(libraries) :
                 successful += 1
             else :
                 message += "<p>Did not synchronize with external library \""+library.library_name+"\".</p>" + msg
+        doInferGroupings(library)
     return ("<p>%s/%s libraries were synchronized.</p>" % (successful, len(libraries))) + message
 
 def doiTunesSync(lib) :
@@ -351,6 +352,85 @@ def doDirectorySync(lib) :
     lib.save()
     return (True, ("<p>%d added, %d updated, %d unchanged, %d removed, and %d skipped.</p>" % (numadded, numupdated, numunchanged, numremoved, numskipped)) + message)
 
+def doInferGroupings(lib) :
+    """Go through all albums in the library which don't have the
+    grouping tag and try to infer it from prefixes in the song names."""
+    message = ""
+    for album in Album.objects.filter(album_library__id = lib.id) :
+        songnames = []
+        noGroupings = True
+        for song in Song.objects.filter(song_album__id = album.id) :
+            if not (song.song_grouping is None or len(song.song_grouping) == 0) :
+                noGroupings = False
+                break
+            songnames.append((song.id, song.song_name))
+        if noGroupings :
+            message += "<p>Album %s has no groupings.</p>" % album.album_name
+            new_groupings = make_grouping(songnames)
+            message += "<blockquote>"
+            message += "<p>%r</p>" % new_groupings
+            message += "</blockquote>"
+            for song_id, grouping in new_groupings.iteritems() :
+                Song.objects.filter(id = song_id).update(song_grouping = grouping)
+        else :
+            message += "<p>Album %s has some grouping data (skipping).</p>" % album.album_name
+    return message
+
+MIN_NUMBER_FOR_GROUPING = 3
+MIN_GROUPING_NAME_LENGTH = 8
+
+def make_grouping(songnames) :
+    def getprefix(s1, s2) :
+        maxlen = min(len(s1), len(s2))
+        last_with_delimiter = 0
+        for i in xrange(1, maxlen) :
+            if s1[:i] != s2[:i] :
+                return s1[:last_with_delimiter]
+            if s1[i-1] in ":- " :
+                last_with_delimiter = i-1
+        else :
+            return ""
+        return s1[:maxlen]
+    prefixes = {}
+    for song_id, name in songnames :
+        for prefix in prefixes.keys() :
+            p = getprefix(name, prefix)
+            prefixes.setdefault(p, set()).add(song_id)
+            prefixes[p].update(prefixes[prefix])
+        prefixes.setdefault(name, set()).add(song_id)
+    prefixes2 = {}
+    for prefix, ids in prefixes.iteritems() :
+        cleaned_prefix = prefix.split(':')[0]
+        while len(cleaned_prefix) > 0 :
+            if cleaned_prefix[-1] in "IVX " :
+                cleaned_prefix = cleaned_prefix[:-1]
+            elif cleaned_prefix[-1] in ':-' :
+                cleaned_prefix = cleaned_prefix[:-1].rstrip()
+                break
+            else :
+                break
+        prefixes2.setdefault(cleaned_prefix, set()).update(ids)
+    prefixes = prefixes2
+    just_prefixes = []
+    for prefix, ids in prefixes.iteritems() :
+        if len(ids) >= MIN_NUMBER_FOR_GROUPING :
+            just_prefixes.append(prefix)
+    def length_based_sort(x, y) :
+        s = cmp(len(x), len(y))
+        if s == 0 :
+            return cmp(x, y)
+        else :
+            return s
+    just_prefixes.sort(cmp=length_based_sort)
+    groupings = {}
+    for p in reversed(just_prefixes) :
+        if any(i in groupings for i in prefixes[p]) :
+            continue
+        if len(p) < MIN_GROUPING_NAME_LENGTH :
+            break
+        for i in prefixes[p] :
+            groupings[i] = p
+    return groupings
 
 #######
 

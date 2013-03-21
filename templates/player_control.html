@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load time_conversion %}
 
-{% block title %}Playlist for SquidSpeakers {{speaker.speaker_server}}:{{speaker.speaker_port}}{% endblock %}
+{% block title %}{% if isPlaying %}{{playing.name}} - {% endif %}SquidSpeakers {{speaker.speaker_server}}:{{speaker.speaker_port}}{% endblock %}
 
 {% block otherhead %}
 <script type="text/javascript">
@@ -39,6 +39,7 @@ var formatTime = function(seconds) { // seconds are float, but will be truncated
 var updateNowPlaying = function(playlist) {
     if(!playlist["isPlaying"]) {
        $(".nowplaying").html("<em>Not playing</em>");
+       updateTitle(false);
     } else {
        var playing = playlist["playing"];
        var str = "<strong>"+playing["name"]+"</strong> <a href=\""+playing["infolink"]+"\">(Info)</a><br />"
@@ -51,6 +52,15 @@ var updateNowPlaying = function(playlist) {
        str = str + " <em>artist</em> " + playing["artist"] +", ";
        str = str + " <em>album</em> " + playing["album"];
        $(".nowplaying").html(str);
+       updateTitle(playing["name"])
+   }
+};
+
+var updateTitle = function(songname) {
+   if (songname) {
+      document.title = songname + " - SquidSpeakers {{speaker.speaker_server}}:{{speaker.speaker_port}}";
+   } else {
+      document.title = "SquidSpeakers {{speaker.speaker_server}}:{{speaker.speaker_port}}";
    }
 };
 
