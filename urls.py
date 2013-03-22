@@ -16,6 +16,7 @@ urlpatterns = patterns('',
     # Uncomment the next line to enable the admin:
     (r'^admin/', include(admin.site.urls)),
     (r'^m/(?P<path>.*)$', 'django.views.static.serve', {'document_root': settings.MEDIA_ROOT}),
+    (r'^favicon.ico', 'django.views.generic.simple.redirect_to', {'url': '/m/images/favicon.ico'}),
     (r'^$', 'django.views.generic.simple.redirect_to', {'url' : '/music/'}),
     (r'^music/$', 'squidmusicweb.views.index'),
     (r'^dump/$', 'squidmusicweb.views.library_serialize'),

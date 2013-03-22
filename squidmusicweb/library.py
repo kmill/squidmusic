@@ -198,6 +198,8 @@ def skipiTunesKind(kind) :
 
 ##########
 
+UNCONDITIONALLY_UPDATE = True
+
 def doDirectorySync(lib) :
     if not os.path.exists(lib.library_location) :
         return (False, "No such directory "+lib.library_location)
@@ -217,7 +219,7 @@ def doDirectorySync(lib) :
             filename = os.path.join(root, file)
             modified = datetime.fromtimestamp(os.path.getmtime(filename))
             songs = Song.objects.filter(song_filename=filename)
-            if len(songs) == 0 or songs[0].song_modified < modified : # need to add or update, respectively
+            if len(songs) == 0 or songs[0].song_modified < modified or UNCONDITIONALLY_UPDATE : # need to add or update, respectively
                 info = None
                 try :
                     info = mutagen.File(filename, easy=True)
@@ -240,6 +242,16 @@ def doDirectorySync(lib) :
                     numbertracks = None
                     if tracknum != None and len(tracknum.split("/")) > 1 :
                         tracknum, numbertracks = tracknum.split("/")
+                    # try to get the tracknum from the beginning of
+                    # the track name if the tracknum is None
+                    if tracknum is None :
+                        i = 1
+                        while i < len(name) :
+                            try :
+                                tracknum = int(name[:i])
+                                i += 1
+                            except ValueError :
+                                break
                     if tracknum != None :
                         try :
                             tracknum = int(tracknum)
