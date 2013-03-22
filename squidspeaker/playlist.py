@@ -170,10 +170,41 @@ class Playlist(object) :
         else :
             self.queued = self.queued[0:number] + [puid]
 
+    def previousSongs(self) :
+        """Returns a list of puids which will not be played given the current settings."""
+        if self.loop or len(self.list) == 0 :
+            return []
+        if self.shuffle :
+            queue = [self.list[self.randomized[self.index]]["puid"]]
+        else :
+            queue = [self.list[self.index]["puid"]]
+        queue += self.queued
+        print "queue",queue
+        lastQueued = queue[-1]
+        toSave = []
+        toSave.extend(queue)
+        if self.shuffle :
+            lastIndex = [i for i in range(0, len(self.list)) if self.list[self.randomized[i]]["puid"] == lastQueued][0]
+            toSave.extend([self.list[self.randomized[i]]["puid"] for i in xrange(lastIndex, len(self.randomized))])
+        else :
+            lastIndex = [i for i in range(0, len(self.list)) if self.list[i]["puid"] == lastQueued][0]
+            toSave.extend([self.list[i]["puid"] for i in xrange(lastIndex, len(self.randomized))])
+        return [song["puid"] for song in self.list if song["puid"] not in toSave]
+            
+
 if __name__=="__main__" :
     p = Playlist()
     p.addSongs([{"filename":"a"}, {"filename":"b"}, {"filename":"c"}])
     p.setSong(1)
     p.moveSong(2, 0)
-    print p.list
-    print p.currentSong()
+    print "list:", p.list
+    print "currentsong:", p.currentSong()
+
+    print "Testing previousSongs"
+    p.addSongs([{"filename":"d"}, {"filename":"e"}, {"filename":"f"}])
+    print "list:", p.list
+    print "currentsong:", p.currentSong()
+    print p.previousSongs()
+    p.queueSong(1, 0)
+    p.queueSong(4, 1)
+    print p.previousSongs()

@@ -59,6 +59,9 @@ class SquidSpeakerClient(object) :
     def clear(self) :
         self.send("clear")
 
+    def clean(self) :
+        self.send("clean")
+
     def delete(self, puids) :
         self.send("delete", puids)
 

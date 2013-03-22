@@ -69,6 +69,7 @@ var ultimateUpdatedTime = null; // set to the last song time, to detect pausing
 var penultimateUpdatedTime = true; // set to the second to last song time, to detect pausing
 var tempPaused = false;
 var lasttempPaused = false;
+var probablyPaused = false;
 
 var doUpdate = function(data) {
     if(playernoupdate) {
@@ -160,7 +161,10 @@ var doUpdate = function(data) {
         }
 
 	if(data["playing"] && data["playing"]["puid"] == song["puid"]) {
-          row.toggleClass("playing", true);
+          if (!row.hasClass("playing")) {
+             $('html, body').animate({scrollTop: (row.offset().top-100) + 'px'}, 'fast');
+            row.toggleClass("playing", true);
+          }
         } else {
           row.toggleClass("playing", false);
         }
@@ -186,8 +190,10 @@ var autoUpdateInterval = 500; // every 0.5 seconds
 
 var updateSlider = function() {
    if(playernoupdate || ultimateUpdatedTime == penultimateUpdatedTime || tempPaused || lasttempPaused) {
+      probablyPaused = true;
       return;
    }
+   probablyPaused = false;
    $("#songtimeindicator").slider("option", "value",
    			          $('#songtimeindicator').slider("value")+autoUpdateInterval);
 };
@@ -283,6 +289,21 @@ $(document).ready(function() {
       				  }
 				  //animate: true
   });
+  $(".playing").each(function() {
+    $('html, body').animate({scrollTop: ($(this).offset().top-100) + 'px'}, 'fast');
+  });
+  $(document).keypress(function(event) {
+    if (event.which == 32) {
+      event.preventDefault();
+      if (probablyPaused) {
+        probablyPaused = false;
+        $(".playButton").click();
+      } else {
+        probablyPaused = true;
+        $(".pauseButton").click();
+      }
+    }
+  });
 });
 
 </script>
@@ -291,23 +312,40 @@ $(document).ready(function() {
 
 {% block content %}
 
-<h1>SquidSpeakers {{speaker.speaker_server}}:{{speaker.speaker_port}}</h1>
+<h1>SquidSpeaker playlist ({{speaker.speaker_server}}:{{speaker.speaker_port}})</h1>
 
-<span class="playercontrol">
-<p>Volume:
+<div class="playercontrol">
+
+<p style="float:right;margin-right:5px;">Loop: {% if loop %}
+<a id="loop" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=loop&value=False">(on)</a>
+{% else %}
+<a id="loop" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=loop&value=True">(off)</a>
+{% endif %} |
+Shuffle: {% if shuffle %}
+<a id="shuffle" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=shuffle&value=False">(on)</a>
+{% else %}
+<a id="shuffle" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=shuffle&value=True">(off)</a>
+{% endif %} |
+<a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=clear">Clear</a> |
+<a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=clean">Clean up</a></p>
+
+<p style="float:left;margin-left:5px;">Volume:
 <span class="volumelevel">{% if volume %}{{volume}}%{% else %}Unknown{% endif %}</span>
 <a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=lowerVolume">-</a> |
 <a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=raiseVolume">+</a>
 &nbsp;&nbsp;
 | <a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=prev">Prev</a> |
-<a class="updatenofollow" onClick="javascript:tempPaused=true" href="{% url squidmusicweb.views.playlist speaker.id %}?command=pause">Pause</a> |
+<a class="pauseButton updatenofollow" onClick="javascript:tempPaused=true" href="{% url squidmusicweb.views.playlist speaker.id %}?command=pause">Pause</a> |
 <a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=stop">Stop</a> |
-<a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=play">Play</a> |
+<a class="playButton updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=play">Play</a> |
 <a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=next">Next</a> |
 <strong>Status:</strong> <span class="serverrunning">
 {% if isPlaying %}Running{% else %}Stopped{% endif %}
-</span>
+</span> ({{speaker.speaker_server}}:{{speaker.speaker_port}})
 </p>
+
+<div style="clear:both; width:100%;"></div>
+
 <div class="infocontrol">
 <div class="nowplaying">
 {% if isPlaying %}
@@ -328,18 +366,8 @@ $(document).ready(function() {
 </tr>
 </table>
 </div>
-<p>Loop: {% if loop %}
-<a id="loop" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=loop&value=False">(on)</a>
-{% else %}
-<a id="loop" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=loop&value=True">(off)</a>
-{% endif %} |
-Shuffle: {% if shuffle %}
-<a id="shuffle" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=shuffle&value=False">(on)</a>
-{% else %}
-<a id="shuffle" class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=shuffle&value=True">(off)</a>
-{% endif %} |
-<a class="updatenofollow" href="{% url squidmusicweb.views.playlist speaker.id %}?command=clear">Clear playlist</a></p>
-</span>
+
+</div>
 
 <table class="speakerplaylist">
   <tr class="playlistheading nodrag nodrop">
@@ -359,5 +387,7 @@ Shuffle: {% if shuffle %}
   </tr>
   {% endfor %}
 </table>
+
+<div style="height:150px;"></div>
 
 {% endblock %}

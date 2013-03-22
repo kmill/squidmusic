@@ -124,6 +124,8 @@ def playlist(request, playerid = None) :
         ssc.shuffle(state)
     elif command == "clear" :
         ssc.clear()
+    elif command == "clean" :
+        ssc.clean()
     elif command == "add" :
         songid = request.GET["id"]
         song = Song.objects.filter(id=songid)[0]

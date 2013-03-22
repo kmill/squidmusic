@@ -26,6 +26,17 @@ div.pagination span.current {
     padding-right: 1em;
 }
 
+div.navbar {
+    position: fixed;
+    z-index: 22;
+    width: 100%;
+    top: 0;
+    left: 0;
+    border-width: 0 0 1px 0;
+    border-style: solid;
+    background: #fef;
+}
+
 div.navbar a {
     color: #00f;
 }
@@ -45,22 +56,23 @@ div.navbar a:active {
 div.navbar {
     margin-bottom: 5px;
     font-size: 11pt;
+    border-color:#ccc;
 }
 
 span.linkbar {
-    background: #fef;
     padding:3px;
-    border-width: 1px;
-    border-style: solid;
     margin-right: 5px;
 }
 
 span.controlbar {
-    background: #efe; /* efe */
+    margin-left: 100px;
+    background: #fef; /* efe */
     padding:3px;
-    border-width: 1px;
-    border-style: solid;
     font-size: 11pt;
+}
+
+div.contentdiv {
+    padding-top: 2em;
 }
 
 table.musictable {
@@ -75,6 +87,17 @@ table.musictable tr.oddentry {
 
 table.musictable tr.evenentry {
     background: #fff;
+}
+
+div.playercontrol {
+    position:fixed;
+    background:#fff;
+    left:0;
+    bottom:0;
+    width:100%;
+    border-width:1px 0 0 0;
+    border-style:solid;
+    border-color:#ccc;
 }
 
 a.playlistsongname {

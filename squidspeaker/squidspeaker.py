@@ -106,6 +106,8 @@ class SquidSpeakerHandler(SocketServer.BaseRequestHandler) :
         elif command == "clear" :
             self.player.stop()
             self.playlist.deleteSongs([x["puid"] for x in self.playlist.list])
+        elif command == "clean" :
+            self.playlist.deleteSongs(self.playlist.previousSongs())
         elif command == "delete" :
             if self.player.isPlaying() :
                 song = self.playlist.currentSong()
@@ -142,10 +144,13 @@ thePlayer = mplayer.MplayerDriver()
 def getPlayer() :
     return thePlayer
 
+class ReusingTCPServer(SocketServer.TCPServer) :
+    allow_reuse_address = True
+
 if __name__ == "__main__" :
     HOST, PORT = "0.0.0.0", 21212
 
-    server = SocketServer.TCPServer((HOST, PORT), SquidSpeakerHandler)
+    server = ReusingTCPServer((HOST, PORT), SquidSpeakerHandler)
     
     print "* Squidspeaker server *"
     print "Server loaded."
