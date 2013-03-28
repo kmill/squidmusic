@@ -292,8 +292,9 @@ $(document).ready(function() {
   $(".playing").each(function() {
     $('html, body').animate({scrollTop: ($(this).offset().top-100) + 'px'}, 'fast');
   });
+  // toggle pause on space
   $(document).keypress(function(event) {
-    if (event.which == 32) {
+    if (event.which == 32 && $(":focus").length == 0) {
       event.preventDefault();
       if (probablyPaused) {
         probablyPaused = false;

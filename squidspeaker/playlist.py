@@ -180,7 +180,7 @@ class Playlist(object) :
             queue = [self.list[self.index]["puid"]]
         queue += self.queued
         print "queue",queue
-        lastQueued = queue[-1]
+        lastQueued = queue[-1] if queue else None
         toSave = []
         toSave.extend(queue)
         if self.shuffle :
