@@ -28,6 +28,45 @@ class RPCServerMetaclass(type) :
 class RPCServable(object) :
     __metaclass__ = RPCServerMetaclass
 
+def handle_request(servable, getMessage) :
+    ident = None
+    method = None
+    args = None
+    kwargs = None
+    try :
+        message = getMessage()
+        if "info" in message :
+            if "dir" == message["info"] :
+                result = sorted(servable.__rpc__.keys())
+            elif "func_doc" == message["info"] :
+                result = servable.__rpc__[message["method"]].func_doc
+            else :
+                raise NotImplementedError("No such info request", message["info"])
+        else :
+            ident = message.get("id", None)
+            method = message.get("method", None)
+            args = message.get("args", [])
+            kwargs = message.get("kwargs", {})
+            print "Handling", report_method(method, args, kwargs),
+            print "id=%r" % ident if ident else ""
+            caller = getattr(servable, "__around_rpc__", lambda f : f())
+            forResult = lambda : servable.__rpc__[method](servable, *args, **kwargs)
+            result = caller(forResult)
+        return {"id" : ident,
+                "result" : result}
+    except Exception as x :
+        print "Exception %r" % x
+        return render_exception(x, ident=ident)
+
+def report_method(method, args, kwargs) :
+    return "%s(%s)" % (method, ", ".join([repr(a) for a in args]
+                                         + ["%s=%r" % (k, v)
+                                            for k, v in kwargs.iteritems()]))
+def render_exception(x, ident=None) :
+    return {"id" : ident,
+            "error" : {"type" : x.__class__.__name__,
+                       "args" : x.args}}
+
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer) :
     allow_reuse_address = True
     daemon_threads = True # for ctrl-c to kill spawned threads
@@ -41,38 +80,9 @@ class RPCServer(ThreadedTCPServer) :
             raise Exception("The object must be an instance of RPCServable")
         print "Making rpc server with methods =", rpcServable.__rpc__.keys()
         class RPCHandler(SocketServer.StreamRequestHandler) :
-            base_object = rpcServable
             def handle(self) :
                 self.request.settimeout(5)
-                ident = None
-                method = None
-                args = None
-                kwargs = None
-                try :
-                    message = self.read_json()
-                    if password and password != message["password"] :
-                        raise Exception("Incorrect password")
-                    if "info" in message :
-                        if "dir" == message["info"] :
-                            result = sorted(self.base_object.__rpc__.keys())
-                        elif "func_doc" == message["info"] :
-                            result = self.base_object.__rpc__[message["method"]].func_doc
-                        else :
-                            raise NotImplementedError("No such info request", message["info"])
-                    else :
-                        ident = message.get("id", None)
-                        method = message.get("method", None)
-                        args = message.get("args", [])
-                        kwargs = message.get("kwargs", {})
-                        print "Handling", self.report_method(method, args, kwargs),
-                        print "id=%r" % ident if ident else ""
-                        caller = getattr(self.base_object, "__around_rpc__", lambda f : f())
-                        forResult = lambda : self.base_object.__rpc__[method](self.base_object, *args, **kwargs)
-                        result = caller(forResult)
-                    self.write_result(ident, result)
-                except Exception as x :
-                    print "Exception %r" % x
-                    self.write_exception(ident, x)
+                self.write_json(handle_request(rpcServable, self.read_message))
             def read_json(self) :
                 size = struct.unpack("<I", self.request.recv(4))
                 data = self.request.recv(size[0])
@@ -81,19 +91,11 @@ class RPCServer(ThreadedTCPServer) :
                 ostring = json.dumps(o)
                 self.request.sendall(struct.pack("<I", len(ostring)))
                 self.request.sendall(ostring)
-            def write_result(self, ident, result) :
-                msg = {"id" : ident,
-                       "result" : result}
-                self.write_json(msg)
-            def write_exception(self, ident, exception) :
-                msg = {"id" : ident,
-                       "error" : {"type" : exception.__class__.__name__,
-                                  "args" : exception.args}}
-                self.write_json(msg)
-            def report_method(self, method, args, kwargs) :
-                return "%s(%s)" % (method, ", ".join([repr(a) for a in args]
-                                                     + ["%s=%r" % (k, v)
-                                                        for k, v in kwargs.iteritems()]))
+            def read_message(self) :
+                message = self.read_json()
+                if password and password != message["password"] :
+                    raise Exception("Incorrect password")
+                return message
         return RPCHandler
 
 class RPCException(Exception) :

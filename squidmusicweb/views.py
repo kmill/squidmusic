@@ -84,6 +84,56 @@ def players(request, message="") :
                                                      "message" : message,
                                                      "playerid" : playerid})
 
+JSRPC_MODULES = {}
+from minirpc.rpc import render_exception, handle_request, RPCServable, rpcmethod
+
+def jsrpc(request, module) :
+    print request.GET.get("message")
+    def getMessage() :
+        return json.loads(request.GET.get("message") or "")
+    response = HttpResponse()
+    if module not in JSRPC_MODULES :
+        print "no such jsrpc module", module
+        response.write(json.dumps(render_exception(KeyError(module))))
+    else :
+        print "calling jsrpc module", module
+        response.write(json.dumps(handle_request(JSRPC_MODULES[module](), getMessage)))
+    return response
+
+def jsrpc_module(name) :
+    def _jsrpc_module(c) :
+        JSRPC_MODULES[name] = c
+        return c
+    return _jsrpc_module
+
+@jsrpc_module("playlist")
+class JSRPC_Playlist(RPCServable) :
+    def init_ssc(self, playerid) :
+        self.speaker = SquidSpeaker.objects.filter(id=playerid)[0]
+        self.ssc = SquidSpeakerClient(self.speaker.speaker_server,
+                                      self.speaker.speaker_port,
+                                      self.speaker.speaker_password)
+    @rpcmethod
+    def prev(self, playerid) :
+        self.init_ssc(playerid)
+        self.ssc.prev()
+    @rpcmethod
+    def pause(self, playerid) :
+        self.init_ssc(playerid)
+        self.ssc.pause()
+    @rpcmethod
+    def play(self, playerid) :
+        self.init_ssc(playerid)
+        self.ssc.play()
+    @rpcmethod
+    def stop(self, playerid) :
+        self.init_ssc(playerid)
+        self.ssc.stop()
+    @rpcmethod
+    def next(self, playerid) :
+        self.init_ssc(playerid)
+        self.ssc.next()
+
 def playlist(request, playerid = None) :
     if playerid == None :
         playerid = request.session.get("playerid", None)

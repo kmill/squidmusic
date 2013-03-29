@@ -11,6 +11,19 @@ var update = function() {
   }
 }
 
+function getRPCCommand(command) {
+   var playlistRPC = jsrpc.module("{% url squidmusicweb.views.jsrpc 'playlist' %}");
+   var method = playlistRPC.method(command)
+   return function(args) {
+      args2 = Object.create(args || {});
+      args2['playerid'] = {{ speaker.id }};
+      return method.run(args2);
+   }
+}
+
+var pause = getRPCCommand("pause");
+var play = getRPCCommand("play");
+
 var formatTime = function(seconds) { // seconds are float, but will be truncated to int
    seconds = parseInt(seconds);
    var hours = parseInt(seconds / 3600);
