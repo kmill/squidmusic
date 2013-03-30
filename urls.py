@@ -25,4 +25,5 @@ urlpatterns = patterns('',
     (r'^playlists/(?P<playerid>\d+)$', 'squidmusicweb.views.playlist'),
     (r'^song/(?P<songid>\d+)$', 'squidmusicweb.views.song'),
     (r'^render/player_song_row$', 'squidmusicweb.views.player_song_row'),
+    (r'^rpc/(?P<module>.+)$', 'squidmusicweb.views.jsrpc'),
 )

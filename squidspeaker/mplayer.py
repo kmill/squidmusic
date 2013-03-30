@@ -7,6 +7,7 @@ import time
 from urllib import urlretrieve
 import os
 import tempfile
+import threading
 
 from settings import MPLAYER
 
@@ -16,8 +17,10 @@ class MplayerDriver(player.PlayerInterface) :
         self.callback = None
         self.id = 0
         self.mplayerlock = threading.Lock()
+        self.mplayerStdinLock = threading.Lock()
         self.lastread = ""
         self.lineno = 0
+        self.linenoLock = threading.Condition()
         self.readProperties = dict()
     def __del__(self) :
         print "Killing mplayer object"
@@ -38,9 +41,11 @@ class MplayerDriver(player.PlayerInterface) :
                                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE)
                 r = self.mplayerProcess.stdout.readline()
                 while r != "" :
-                    print "got message from mplayer:",r
+                    print "got message from mplayer:",r.strip()
                     self.lastread = r[:-1] # strip off newline
-                    self.lineno += 1
+                    with self.linenoLock :
+                        self.lineno += 1
+                        self.linenoLock.notify_all()
                     try :
                         exp = self.lastread.partition("=")
                         self.readProperties[exp[0][4:]] = exp[2]
@@ -67,7 +72,8 @@ class MplayerDriver(player.PlayerInterface) :
             return False
     def sendCommand(self, commandString) :
         if self.isRunning() :
-            self.mplayerProcess.stdin.write(commandString+"\n")
+            with self.mplayerStdinLock :
+                self.mplayerProcess.stdin.write(commandString+"\n")
     def getProperty(self, property, keepPausing = True) :
         if self.isRunning() :
             print "getting property:",property
@@ -75,9 +81,13 @@ class MplayerDriver(player.PlayerInterface) :
             command = "get_property "+property+"\n"
             if keepPausing :
                 command = "pausing_keep_force "+command
-            self.mplayerProcess.stdin.write(command)
-            while self.lineno == last :
-                pass
+            with self.mplayerStdinLock :
+                self.mplayerProcess.stdin.write(command)
+            with self.linenoLock :
+                while self.lineno == last :
+                    if not self.linenoLock.wait() :
+                        with self.mplayerStdinLock :
+                            self.mplayerProcess.stdin.write(command)
             print "got property",property,"=",self.readProperties.get(property,None) # may not be accurate--wait until next loop!
             return self.readProperties.get(property,None)
         else :

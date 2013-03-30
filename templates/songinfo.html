@@ -10,6 +10,7 @@
 <strong>Artist:</strong> {{song.song_artist}} <br />
 {% if song.song_tracknum != None %}<strong>Track:</strong> {{song.song_tracknum}} {% if song.song_numbertracks != None %}of {{song.song_numbertracks}}{% endif %} <br />{% endif %}
 <strong>Album:</strong> {{song.song_album}} <br />
+{% if song.song_discnum != None %}<strong>Disc:</strong> {{song.song_discnum}} {% if song.song_numberdiscs != None %}of {{song.song_numberdiscs}}{% endif %} <br />{% endif %}
 <strong>Genre:</strong> {{song.song_genre}} <br />
 <strong>Time:</strong> {{song.song_time|msec_to_string}} <br />
 <strong>Filename:</strong> {{song.song_filename}} <br />

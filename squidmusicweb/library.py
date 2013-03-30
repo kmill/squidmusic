@@ -39,6 +39,18 @@ def doLibrarySynchronization(libraries) :
         doInferGroupings(library)
     return ("<p>%s/%s libraries were synchronized.</p>" % (successful, len(libraries))) + message
 
+def startAutoSyncher() :
+    try :
+        import pyinotify
+    except :
+        print "Warning: pyinotify is not installed."
+        return
+    for library in Library.objects :
+        if library.library_type == "directory" :
+            makeSyncher(library.id)
+def makeSyncher(library_id) :
+    pass
+
 def doiTunesSync(lib) :
 #    try :
         Song.objects.filter(song_album__album_library__id = lib.id).update(song_synchronized = False)
@@ -201,6 +213,7 @@ def skipiTunesKind(kind) :
 UNCONDITIONALLY_UPDATE = True
 
 def doDirectorySync(lib) :
+    global numadded, numupdated, numunchanged, numskipped, numremoved
     if not os.path.exists(lib.library_location) :
         return (False, "No such directory "+lib.library_location)
 
@@ -217,152 +230,163 @@ def doDirectorySync(lib) :
     for root, dirs, files in os.walk(lib.library_location) :
         for file in files :
             filename = os.path.join(root, file)
-            modified = datetime.fromtimestamp(os.path.getmtime(filename))
-            songs = Song.objects.filter(song_filename=filename)
-            if len(songs) == 0 or songs[0].song_modified < modified or UNCONDITIONALLY_UPDATE : # need to add or update, respectively
-                info = None
-                try :
-                    info = mutagen.File(filename, easy=True)
-                except :
-                    message += "<p>Bad song file.</p>"
-                if info is not None :
-                    #message += "<pre>--"+filename+"\n-"+info.pprint()+"</pre>"
-
-                    name = info.get("title", [file])[0]
-                    grouping = info.get("grouping", [None])[0]
-                    composer = info.get("composer", [None])[0]
-                    artist = info.get("artist", [None])[0]
-                    albumname = info.get("album", [None])[0]
-                    try :
-                        genre = info.get("genre", [None])[0]
-                    except :
-                        genre = None
-                    time = int(info.info.length*1000) # sec -> msec
-                    tracknum = info.get("tracknumber", [None])[0]
-                    numbertracks = None
-                    if tracknum != None and len(tracknum.split("/")) > 1 :
-                        tracknum, numbertracks = tracknum.split("/")
-                    # try to get the tracknum from the beginning of
-                    # the track name if the tracknum is None
-                    if tracknum is None :
-                        i = 1
-                        while i < len(name) :
-                            try :
-                                tracknum = int(name[:i])
-                                i += 1
-                            except ValueError :
-                                break
-                    if tracknum != None :
-                        try :
-                            tracknum = int(tracknum)
-                        except ValueError :
-                            tracknum = None
-                            numbertracks = None
-                    if numbertracks != None :
-                        try :
-                            numbertracks = int(numbertracks)
-                        except ValueError :
-                            numbertracks = None
-                    discnum = info.get("discnumber", [None])[0]
-                    numberdiscs = None
-                    if discnum != None and len(discnum.split("/")) > 1 :
-                        discnum, numberdiscs = discnum.split("/")
-                    if discnum != None :
-                        try :
-                            discnum = int(discnum)
-                        except ValueError :
-                            discnum = None
-                            numberdiscs = None
-                    if numberdiscs != None :
-                        try :
-                            numberdiscs = int(numberdiscs)
-                        except ValueError :
-                            numberdiscs = None
-                    filetype = info.mime[0] # just take first one?
-                    filesize = os.path.getsize(filename)
-                    try :
-                        bitrate = int(info.info.bitrate/1000) # bps -> kbps
-                    except AttributeError :
-                        bitrate = None # flac
-                    
-                    if albumname == None :
-                        head, tail = os.path.split(root)
-                        if tail == "" or len(head) < len(lib.library_location) :
-                            albumname = "*Unknown Album*"
-                        else :
-                            albumname = tail
-                    if artist == None :
-                        artist = "*Unknown Artist*"
-
-                    albums = Album.objects.filter(album_library__id = lib.id, album_name = albumname)
-                    album = None
-                    if len(albums) == 0 :
-                        album = Album(album_library = lib,
-                                      album_name = albumname,
-                                      album_synchronized = True)
-                        album.save()
-                    else :
-                        album = albums[0]
-                        album.album_synchronized = True
-                        album.save()
-                    
-                    if len(songs) == 0 :
-                        numadded += 1
-                        song = Song(song_name = name,
-                                    song_grouping = grouping,
-                                    song_composer = composer,
-                                    song_artist = artist,
-                                    song_album = album,
-                                    song_genre = genre,
-                                    song_time = time,
-                                    song_tracknum = tracknum,
-                                    song_numbertracks = numbertracks,
-                                    song_discnum = discnum,
-                                    song_numberdiscs = numberdiscs,
-                                    song_filetype = filetype,
-                                    song_filesize = filesize,
-                                    song_bitrate = bitrate,
-                                    song_filename = filename,
-                                    song_synchronized = True,
-                                    song_modified = modified)
-                        song.save()
-                    else :
-                        numupdated += 1
-                        songs.update(song_name = name,
-                                     song_grouping = grouping,
-                                     song_composer = composer,
-                                     song_artist = artist,
-                                     song_album = album,
-                                     song_genre = genre,
-                                     song_time = time,
-                                     song_tracknum = tracknum,
-                                     song_numbertracks = numbertracks,
-                                     song_discnum = discnum,
-                                     song_numberdiscs = numberdiscs,
-                                     song_filetype = filetype,
-                                     song_filesize = filesize,
-                                     song_bitrate = bitrate,
-                                     song_filename = filename,
-                                     song_synchronized = True,
-                                     song_modified = modified)
-                else :
-                    numskipped += 1
-                    message += "<p>Skipped non-sound file "+filename+"</p>"
-            elif len(songs) > 0 : # the file is in the database, just need to update
-                songs[0].song_synchronized = True
-                songs[0].song_album.album_synchronized = True
-                songs[0].save()
-                songs[0].song_album.save()
-                numunchanged += 1
-            else :
-                numremoved += 1
-
+            message += updateFile(lib, filename)
     Song.objects.filter(song_album__album_library__id = lib.id, song_synchronized = False).delete()
     Album.objects.filter(album_library__id = lib.id, album_synchronized = False).delete()
     
     lib.last_synchronized = datetime.now()
     lib.save()
     return (True, ("<p>%d added, %d updated, %d unchanged, %d removed, and %d skipped.</p>" % (numadded, numupdated, numunchanged, numremoved, numskipped)) + message)
+
+def updateFile(lib, filename) :
+    message = ""
+    global numadded, numupdated, numunchanged, numskipped, numremoved
+    root, file = os.path.split(filename)
+    modified = datetime.fromtimestamp(os.path.getmtime(filename))
+    songs = Song.objects.filter(song_filename=filename)
+    if len(songs) == 0 or songs[0].song_modified < modified or UNCONDITIONALLY_UPDATE : # need to add or update, respectively
+        info = None
+        try :
+            info = mutagen.File(filename, easy=True)
+        except :
+            message += "<p>Bad song file.</p>"
+        if info is not None :
+            #message += "<pre>--"+filename+"\n-"+info.pprint()+"</pre>"
+
+            name = info.get("title", [file])[0]
+            grouping = info.get("grouping", [None])[0]
+            composer = info.get("composer", [None])[0]
+            artist = info.get("artist", [None])[0]
+            albumname = info.get("album", [None])[0]
+            try :
+                genre = info.get("genre", [None])[0]
+            except :
+                genre = None
+            time = int(info.info.length*1000) # sec -> msec
+            tracknum = info.get("tracknumber", [None])[0]
+            numbertracks = None
+            if tracknum != None and len(tracknum.split("/")) > 1 :
+                tracknum, numbertracks = tracknum.split("/")
+            # try to get the tracknum from the beginning of
+            # the track name if the tracknum is None
+            if tracknum is None :
+                i = 1
+                while i < len(name) :
+                    try :
+                        tracknum = int(name[:i])
+                        i += 1
+                    except ValueError :
+                        break
+            if tracknum != None :
+                try :
+                    tracknum = int(tracknum)
+                except ValueError :
+                    tracknum = None
+                    numbertracks = None
+            if numbertracks != None :
+                try :
+                    numbertracks = int(numbertracks)
+                except ValueError :
+                    numbertracks = None
+            discnum = info.get("discnumber", [None])[0]
+            numberdiscs = None
+            if discnum is None :
+                dirparts = os.path.split(root)
+                if dirparts[1].lower().startswith("cd ") :
+                    discnum = dirparts[-1][3:]
+            if discnum != None and len(discnum.split("/")) > 1 :
+                discnum, numberdiscs = discnum.split("/")
+            if discnum != None :
+                try :
+                    discnum = int(discnum)
+                except ValueError :
+                    discnum = None
+                    numberdiscs = None
+            if numberdiscs != None :
+                try :
+                    numberdiscs = int(numberdiscs)
+                except ValueError :
+                    numberdiscs = None
+            filetype = info.mime[0] # just take first one?
+            filesize = os.path.getsize(filename)
+            try :
+                bitrate = int(info.info.bitrate/1000) # bps -> kbps
+            except AttributeError :
+                bitrate = None # flac
+
+            if albumname == None :
+                head, tail = os.path.split(root)
+                if tail == "" or len(head) < len(lib.library_location) :
+                    albumname = "*Unknown Album*"
+                else :
+                    albumname = tail
+            if artist == None :
+                artist = "*Unknown Artist*"
+
+            albums = Album.objects.filter(album_library__id = lib.id, album_name = albumname)
+            album = None
+            if len(albums) == 0 :
+                album = Album(album_library = lib,
+                              album_name = albumname,
+                              album_synchronized = True)
+                album.save()
+            else :
+                album = albums[0]
+                album.album_synchronized = True
+                album.save()
+
+            if len(songs) == 0 :
+                numadded += 1
+                song = Song(song_name = name,
+                            song_grouping = grouping,
+                            song_composer = composer,
+                            song_artist = artist,
+                            song_album = album,
+                            song_genre = genre,
+                            song_time = time,
+                            song_tracknum = tracknum,
+                            song_numbertracks = numbertracks,
+                            song_discnum = discnum,
+                            song_numberdiscs = numberdiscs,
+                            song_filetype = filetype,
+                            song_filesize = filesize,
+                            song_bitrate = bitrate,
+                            song_filename = filename,
+                            song_synchronized = True,
+                            song_modified = modified)
+                song.save()
+            else :
+                numupdated += 1
+                songs.update(song_name = name,
+                             song_grouping = grouping,
+                             song_composer = composer,
+                             song_artist = artist,
+                             song_album = album,
+                             song_genre = genre,
+                             song_time = time,
+                             song_tracknum = tracknum,
+                             song_numbertracks = numbertracks,
+                             song_discnum = discnum,
+                             song_numberdiscs = numberdiscs,
+                             song_filetype = filetype,
+                             song_filesize = filesize,
+                             song_bitrate = bitrate,
+                             song_filename = filename,
+                             song_synchronized = True,
+                             song_modified = modified)
+        else :
+            numskipped += 1
+            message += "<p>Skipped non-sound file "+filename+"</p>"
+    elif len(songs) > 0 : # the file is in the database, just need to update
+        songs[0].song_synchronized = True
+        songs[0].song_album.album_synchronized = True
+        songs[0].save()
+        songs[0].song_album.save()
+        numunchanged += 1
+    else :
+        numremoved += 1
+    return message
+
 
 def doInferGroupings(lib) :
     """Go through all albums in the library which don't have the
