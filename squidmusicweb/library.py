@@ -292,8 +292,10 @@ def updateFile(lib, filename) :
             numberdiscs = None
             if discnum is None :
                 dirparts = os.path.split(root)
-                if dirparts[1].lower().startswith("cd ") :
-                    discnum = dirparts[-1][3:]
+                if dirparts[1].lower().startswith("cd") and len(dirparts[1]) > 2 and dirparts[1][2:3] in "0123456789" :
+                    discnum = dirparts[1][2:]
+                    # this is the actual root of the album:
+                    root = dirparts[0]
             if discnum != None and len(discnum.split("/")) > 1 :
                 discnum, numberdiscs = discnum.split("/")
             if discnum != None :
